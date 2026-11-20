@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "E-edition Cleanup",
+  "version": "1.0.0",
+  "description": "Removes the e-edition content tabs and expands the printed-page viewer.",
+  "permissions": [
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "*://*.dailycamera.com/*",
+    "*://*.dailcamera.com/*",
+    "*://*.denverpost.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.dailycamera.com/*",
+        "*://*.dailcamera.com/*",
+        "*://*.denverpost.com/*"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://*.dailycamera.com/*",
+        "*://*.dailcamera.com/*",
+        "*://*.denverpost.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

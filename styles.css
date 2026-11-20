@@ -1,0 +1,11 @@
+nav[aria-label="Content navigation"] {
+  display: none !important;
+}
+
+#main-content > div > main > div:first-child {
+  padding: 0 !important;
+}
+
+#main-content .absolute.bottom-0.z-10.border-t-2 {
+  border-top: none !important;
+}
