@@ -6,8 +6,14 @@ nav[aria-label="Content navigation"] {
 #main-content button[aria-label="Next Page"],
 #main-content button[aria-label*="Previous Page" i],
 #main-content button[aria-label*="Next Page" i],
+#main-content [aria-label*="Previous Article" i],
+#main-content [aria-label*="Next Article" i],
 #main-content [data-testid*="previous-page" i],
 #main-content [data-testid*="next-page" i],
+#main-content [data-testid*="previous-article" i],
+#main-content [data-testid*="next-article" i],
+#main-content [class*="previous-article" i],
+#main-content [class*="next-article" i],
 #main-content .swiper-button-prev,
 #main-content .swiper-button-next {
   display: none !important;

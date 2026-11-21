@@ -34,7 +34,7 @@ const isDesktop = () =>
   !window.matchMedia ||
   window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
-const pageButtonDescription = (element) =>
+const navigationButtonDescription = (element) =>
   [
     element.getAttribute("aria-label"),
     element.getAttribute("title"),
@@ -47,7 +47,7 @@ const pageButtonDescription = (element) =>
     .join(" ");
 
 const isPreviousPageButton = (element) => {
-  const description = pageButtonDescription(element).replace(/\s+/g, " ");
+  const description = navigationButtonDescription(element).replace(/\s+/g, " ");
   return (
     /\bprevious\s*-?\s*page\b/i.test(description) ||
     /\bswiper-button-prev\b/i.test(description)
@@ -55,36 +55,80 @@ const isPreviousPageButton = (element) => {
 };
 
 const isNextPageButton = (element) => {
-  const description = pageButtonDescription(element).replace(/\s+/g, " ");
+  const description = navigationButtonDescription(element).replace(/\s+/g, " ");
   return (
     /\bnext\s*-?\s*page\b/i.test(description) ||
     /\bswiper-button-next\b/i.test(description)
   );
 };
 
-const findPageButton = (direction) => {
-  const candidates = document.querySelectorAll(
-    'button, [role="button"], a[href], [class*="previous-page" i], [class*="next-page" i]',
+const isPreviousArticleButton = (element) =>
+  /\bprevious\s*-?\s*article\b/i.test(
+    navigationButtonDescription(element).replace(/\s+/g, " "),
   );
 
-  for (const candidate of candidates) {
-    if (direction === "previous" && isPreviousPageButton(candidate)) {
-      return candidate;
-    }
-    if (direction === "next" && isNextPageButton(candidate)) {
-      return candidate;
+const isNextArticleButton = (element) =>
+  /\bnext\s*-?\s*article\b/i.test(
+    navigationButtonDescription(element).replace(/\s+/g, " "),
+  );
+
+const navigationCandidates = [
+  "button",
+  '[role="button"]',
+  "a[href]",
+  '[aria-label*="Previous Page" i]',
+  '[aria-label*="Next Page" i]',
+  '[aria-label*="Previous Article" i]',
+  '[aria-label*="Next Article" i]',
+  '[title*="Previous Page" i]',
+  '[title*="Next Page" i]',
+  '[title*="Previous Article" i]',
+  '[title*="Next Article" i]',
+  '[data-testid*="previous-page" i]',
+  '[data-testid*="next-page" i]',
+  '[data-testid*="previous-article" i]',
+  '[data-testid*="next-article" i]',
+  '[class*="previous-page" i]',
+  '[class*="next-page" i]',
+  '[class*="previous-article" i]',
+  '[class*="next-article" i]',
+].join(", ");
+
+const findNavigationButton = (direction, kind, root = document) => {
+  const isPrevious =
+    kind === "article" ? isPreviousArticleButton : isPreviousPageButton;
+  const isNext = kind === "article" ? isNextArticleButton : isNextPageButton;
+
+  const predicate = direction === "previous" ? isPrevious : isNext;
+  const roots = root === document ? [document] : [root, document];
+  for (const searchRoot of roots) {
+    const button = [...searchRoot.querySelectorAll(navigationCandidates)].find(
+      predicate,
+    );
+    if (button) {
+      return button;
     }
   }
-
   return null;
 };
 
+const isArticleReaderOpen = () => {
+  const closeButton = document.querySelector(
+    'button[aria-label="Close Article"]',
+  );
+  return Boolean(
+    closeButton &&
+      closeButton.getClientRects().length &&
+      getComputedStyle(closeButton).visibility !== "hidden",
+  );
+};
+
 const isEditableTarget = (target) =>
-  target instanceof HTMLElement &&
+  target?.nodeType === Node.ELEMENT_NODE &&
   (target.isContentEditable ||
     target.matches("input, textarea, select"));
 
-const addDesktopPageKeyboardNavigation = (root = document) => {
+const addDesktopKeyboardNavigation = (root = document) => {
   if (!isDesktop()) {
     return;
   }
@@ -114,7 +158,10 @@ const addDesktopPageKeyboardNavigation = (root = document) => {
         return;
       }
 
-      const button = findPageButton(direction);
+      const articleReaderOpen = isArticleReaderOpen();
+      const button = articleReaderOpen
+        ? findNavigationButton(direction, "article", root)
+        : findNavigationButton(direction, "page", root);
       if (button) {
         event.preventDefault();
         button.click();
@@ -124,29 +171,58 @@ const addDesktopPageKeyboardNavigation = (root = document) => {
   );
 };
 
-addDesktopPageKeyboardNavigation();
-
-const hidePageButtons = () => {
-  const candidates = document.querySelectorAll(
-    'button, [role="button"], a[href]',
-  );
+const hideNavigationButtons = (root = document) => {
+  const candidates = root.querySelectorAll(navigationCandidates);
 
   candidates.forEach((candidate) => {
     if (
       isPreviousPageButton(candidate) ||
-      isNextPageButton(candidate)
+      isNextPageButton(candidate) ||
+      isPreviousArticleButton(candidate) ||
+      isNextArticleButton(candidate)
     ) {
       candidate.style.display = "none";
     }
   });
 };
 
-const pageButtonObserver = new MutationObserver(hidePageButtons);
-pageButtonObserver.observe(document.documentElement, {
-  childList: true,
-  subtree: true,
-});
-hidePageButtons();
+const observedDocuments = new WeakSet();
+const observedFrames = new WeakSet();
+
+const observeNavigationDocument = (root) => {
+  if (!root.documentElement || observedDocuments.has(root)) {
+    return;
+  }
+  observedDocuments.add(root);
+  addDesktopKeyboardNavigation(root);
+  const observer = new MutationObserver(() => {
+    hideNavigationButtons(root);
+    if (root === document) {
+      root.querySelectorAll("iframe").forEach(observeFrame);
+    }
+  });
+  observer.observe(root.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["aria-label", "title", "data-testid", "class", "id"],
+  });
+  hideNavigationButtons(root);
+};
+
+const observeFrame = (frame) => {
+  if (!observedFrames.has(frame)) {
+    observedFrames.add(frame);
+    frame.addEventListener("load", () => observeFrame(frame));
+  }
+  const frameDocument = frame.contentDocument;
+  if (frameDocument) {
+    observeNavigationDocument(frameDocument);
+  }
+};
+
+observeNavigationDocument(document);
+document.querySelectorAll("iframe").forEach(observeFrame);
 
 const copyButtonId = "e-edition-cleanup-copy-story";
 const copyButtonLabel = "Copy story and photos";

@@ -4,8 +4,9 @@ A Chromium Manifest V3 extension that hides the Pages, Articles, and
 Supplements navigation and Previous Page/Next Page side buttons, removes the
 reader's extra spacing, and keeps story text overlays interactive. On desktop,
 use Left or Up to go to the previous page and Right or Down to go to the next
-page. The story overlay includes a button to copy the story text and photos as
-rich clipboard content.
+page. When the story reader overlay is open, the same arrow keys navigate to
+the previous or next article. The story overlay includes a button to copy the
+story text and photos as rich clipboard content.
 
 ## Configure sites
 
