@@ -30,6 +30,124 @@ if (!closeSelectedTab()) {
   setTimeout(() => observer.disconnect(), 15_000);
 }
 
+const isDesktop = () =>
+  !window.matchMedia ||
+  window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+const pageButtonDescription = (element) =>
+  [
+    element.getAttribute("aria-label"),
+    element.getAttribute("title"),
+    element.getAttribute("data-testid"),
+    element.id,
+    element.className,
+    element.textContent?.trim(),
+  ]
+    .filter((value) => typeof value === "string")
+    .join(" ");
+
+const isPreviousPageButton = (element) => {
+  const description = pageButtonDescription(element).replace(/\s+/g, " ");
+  return (
+    /\bprevious\s*-?\s*page\b/i.test(description) ||
+    /\bswiper-button-prev\b/i.test(description)
+  );
+};
+
+const isNextPageButton = (element) => {
+  const description = pageButtonDescription(element).replace(/\s+/g, " ");
+  return (
+    /\bnext\s*-?\s*page\b/i.test(description) ||
+    /\bswiper-button-next\b/i.test(description)
+  );
+};
+
+const findPageButton = (direction) => {
+  const candidates = document.querySelectorAll(
+    'button, [role="button"], a[href], [class*="previous-page" i], [class*="next-page" i]',
+  );
+
+  for (const candidate of candidates) {
+    if (direction === "previous" && isPreviousPageButton(candidate)) {
+      return candidate;
+    }
+    if (direction === "next" && isNextPageButton(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+};
+
+const isEditableTarget = (target) =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable ||
+    target.matches("input, textarea, select"));
+
+const addDesktopPageKeyboardNavigation = (root = document) => {
+  if (!isDesktop()) {
+    return;
+  }
+
+  root.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.defaultPrevented ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        isEditableTarget(event.target)
+      ) {
+        return;
+      }
+
+      const direction =
+        event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? "previous"
+          : event.key === "ArrowRight" || event.key === "ArrowDown"
+            ? "next"
+            : null;
+
+      if (!direction) {
+        return;
+      }
+
+      const button = findPageButton(direction);
+      if (button) {
+        event.preventDefault();
+        button.click();
+      }
+    },
+    true,
+  );
+};
+
+addDesktopPageKeyboardNavigation();
+
+const hidePageButtons = () => {
+  const candidates = document.querySelectorAll(
+    'button, [role="button"], a[href]',
+  );
+
+  candidates.forEach((candidate) => {
+    if (
+      isPreviousPageButton(candidate) ||
+      isNextPageButton(candidate)
+    ) {
+      candidate.style.display = "none";
+    }
+  });
+};
+
+const pageButtonObserver = new MutationObserver(hidePageButtons);
+pageButtonObserver.observe(document.documentElement, {
+  childList: true,
+  subtree: true,
+});
+hidePageButtons();
+
 const copyButtonId = "e-edition-cleanup-copy-story";
 const copyButtonLabel = "Copy story and photos";
 const copyIcon =

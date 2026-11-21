@@ -2,6 +2,17 @@ nav[aria-label="Content navigation"] {
   display: none !important;
 }
 
+#main-content button[aria-label="Previous Page"],
+#main-content button[aria-label="Next Page"],
+#main-content button[aria-label*="Previous Page" i],
+#main-content button[aria-label*="Next Page" i],
+#main-content [data-testid*="previous-page" i],
+#main-content [data-testid*="next-page" i],
+#main-content .swiper-button-prev,
+#main-content .swiper-button-next {
+  display: none !important;
+}
+
 #main-content > div > main > div:first-child {
   padding: 0 !important;
 }
